@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/mimicloud/easyconfig"
+	"log"
 )
 
 var config = struct {
@@ -28,6 +29,7 @@ func init() {
 	plugins = []PluginInterface{
 		&MysqlPlugin{Username: "root", Password: "123456"},
 		&PgsqlPlugin{Username: "max", Password: "216090"},
+		&MongoPlugin{Username: "root", Password: "123456"},
 	}
 
 	easyconfig.Parse("./config.json", &config)
@@ -47,6 +49,7 @@ func init() {
 func receiveMessage(msg string) string {
 	var cmd Command
 
+	log.Printf("%s", msg)
 	if err := json.Unmarshal([]byte(msg), &cmd); err != nil {
 		panic(err)
 	}
