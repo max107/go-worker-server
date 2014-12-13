@@ -64,15 +64,8 @@ func (self *MysqlPlugin) Process(cmd Command) error {
 		return err
 	}
 
-	_, err = db.Exec("CREATE DATABASE ?", self.cmd_database)
-	if err != nil {
-		return err
-	}
-
-	_, err = db.Exec("GRANT ALL PRIVILEGES ON ?.* TO ?@localhost IDENTIFIED BY '?'", self.cmd_database, self.cmd_username, self.cmd_password)
-	if err != nil {
-		return err
-	}
+	db.Exec("CREATE DATABASE ?", self.cmd_database)
+	db.Exec("GRANT ALL PRIVILEGES ON ?.* TO ?@localhost IDENTIFIED BY '?'", self.cmd_database, self.cmd_username, self.cmd_password)
 
 	return nil
 }
