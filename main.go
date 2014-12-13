@@ -25,7 +25,10 @@ var (
 )
 
 func init() {
-	plugins = []PluginInterface{&MysqlPlugin{Username: "root", Password: "123456"}}
+	plugins = []PluginInterface{
+		&MysqlPlugin{Username: "root", Password: "123456"},
+		&PgsqlPlugin{Username: "max", Password: "216090"},
+	}
 
 	easyconfig.Parse("./config.json", &config)
 
@@ -60,12 +63,10 @@ func receiveMessage(msg string) string {
 			} else {
 				return "Invalid plugin configuration"
 			}
-		} else {
-			return fmt.Sprintf("Unknown plugin %v", cmd)
 		}
 	}
 
-	return fmt.Sprintf("Received %v", cmd)
+	return fmt.Sprintf("Unknown plugin %v", cmd)
 }
 
 func main() {
