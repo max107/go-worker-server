@@ -1,1 +1,5 @@
-{}
+{
+    "bind": "tcp://*:5555",
+    "allow": "127.0.0.1",
+    "auth_verbose": true
+}
