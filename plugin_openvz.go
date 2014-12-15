@@ -55,7 +55,12 @@ func (self *OpenvzPlugin) Create(cmd Command) error {
 		return err
 	}
 
-	return container.Start(true)
+	err = container.Start(true)
+	if err != nil {
+		return err
+	}
+
+	return container.SetFromMap(params)
 }
 
 func (self *OpenvzPlugin) Update(cmd Command) error {
