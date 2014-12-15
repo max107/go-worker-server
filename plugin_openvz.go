@@ -1,72 +1,80 @@
 package main
 
 import (
-	"labix.org/v2/mgo"
+	"../go-openvz"
 
-	"errors"
 	"fmt"
-	"log"
-	"time"
+	"strconv"
 )
 
 type OpenvzPlugin struct {
-	container *Container
+	cmd_ctid  int
+	cmd_wait  bool
+	cmd_force bool
 }
 
 func (self *OpenvzPlugin) GetType() string {
 	return "openvz"
 }
 
-func (self *OpenvzPlugin) getString(cmd Command, key string) (string, error) {
-	if value, ok := cmd.Args[key]; ok {
-		return fmt.Sprintf("%s", value), nil
-	} else {
-		return "", errors.New("Unknown key")
-	}
-}
-
 func (self *OpenvzPlugin) IsValid(cmd Command) bool {
-	username, _ := self.getString(cmd, "username")
-	if len(username) == 0 {
-		return false
+	ctid, _ := getString(cmd, "ctid")
+	if len(ctid) != 0 {
+		self.cmd_ctid, _ = strconv.Atoi(ctid)
 	}
-	self.cmd_username = username
-
-	password, _ := self.getString(cmd, "password")
-	if len(password) == 0 {
-		return false
-	}
-	self.cmd_password = password
-
-	database, _ := self.getString(cmd, "database")
-	if len(database) == 0 {
-		return false
-	}
-	self.cmd_database = database
 
 	return true
 }
 
-func (self *OpenvzPlugin) Process(cmd Command) error {
-	url := fmt.Sprintf("mongodb://%s:%s@%s:%s/%s", self.Username, self.Password, self.Hostname, self.Port, self.cmd_database)
-	session, err := mgo.DialWithTimeout(url, time.Second)
+func (self *OpenvzPlugin) Create(cmd Command) error {
+	var createArgs = make(map[string]bool)
+	createArgs["layout"] = true
+	createArgs["ostemplate"] = true
+	createArgs["hostname"] = true
+	createArgs["ipadd"] = true
+	createArgs["diskspace"] = true
+
+	var createParams = make(map[string]string)
+	var params = make(map[string]string)
+
+	for key, value := range cmd.Args {
+		if key == "ctid" {
+			continue
+		}
+
+		if _, ok := createArgs[key]; ok {
+			createParams[key] = fmt.Sprintf("%s", value)
+		} else {
+			params[key] = fmt.Sprintf("%s", value)
+		}
+	}
+
+	container := openvz.Container{Ctid: self.cmd_ctid}
+	err := container.CreateFromMap(createParams, params)
 	if err != nil {
 		return err
 	}
-	database := session.DB(self.cmd_database)
 
-	user := &mgo.User{
-		Username: self.cmd_username,
-		Password: self.cmd_password,
-		Roles:    []mgo.Role{mgo.RoleReadWrite},
+	return container.Start(true)
+}
+
+func (self *OpenvzPlugin) Update(cmd Command) error {
+	var params = make(map[string]string)
+
+	container := openvz.Container{Ctid: self.cmd_ctid}
+
+	for key, value := range cmd.Args {
+		if key == "ctid" {
+			continue
+		}
+
+		params[key] = fmt.Sprintf("%s", value)
 	}
 
-	err := database.UpsertUser(user)
-	if err != nil {
-		return err
-	}
+	return container.SetFromMap(params)
+}
 
-	session.Close()
-
-	return nil
+func (self *OpenvzPlugin) Delete(cmd Command) error {
+	container := openvz.Container{Ctid: self.cmd_ctid}
+	return container.Delete(true)
 }

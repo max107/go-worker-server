@@ -5,9 +5,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 
-	"errors"
 	"fmt"
-	"log"
 )
 
 type MysqlPlugin struct {
@@ -25,28 +23,20 @@ func (self *MysqlPlugin) GetType() string {
 	return "mysql"
 }
 
-func (self *MysqlPlugin) getString(cmd Command, key string) (string, error) {
-	if value, ok := cmd.Args[key]; ok {
-		return fmt.Sprintf("%s", value), nil
-	} else {
-		return "", errors.New("Unknown key")
-	}
-}
-
 func (self *MysqlPlugin) IsValid(cmd Command) bool {
-	username, _ := self.getString(cmd, "username")
+	username, _ := getString(cmd, "username")
 	if len(username) == 0 {
 		return false
 	}
 	self.cmd_username = username
 
-	password, _ := self.getString(cmd, "password")
+	password, _ := getString(cmd, "password")
 	if len(password) == 0 {
 		return false
 	}
 	self.cmd_password = password
 
-	database, _ := self.getString(cmd, "database")
+	database, _ := getString(cmd, "database")
 	if len(database) == 0 {
 		return false
 	}
@@ -55,17 +45,36 @@ func (self *MysqlPlugin) IsValid(cmd Command) bool {
 	return true
 }
 
-func (self *MysqlPlugin) Process(cmd Command) error {
-	log.Printf("%v", self)
-	log.Printf("%v", cmd)
-
+func (self *MysqlPlugin) Create(cmd Command) error {
 	db, err := gorm.Open("mysql", fmt.Sprintf("%s:%s@/%s?charset=utf8&parseTime=True", self.Username, self.Password, "mysql"))
 	if err != nil {
 		return err
 	}
 
-	db.Exec("CREATE DATABASE ?", self.cmd_database)
-	db.Exec("GRANT ALL PRIVILEGES ON ?.* TO ?@localhost IDENTIFIED BY '?'", self.cmd_database, self.cmd_username, self.cmd_password)
+	db.Exec(fmt.Sprintf("CREATE DATABASE %s", self.cmd_database))
+	db.Exec(fmt.Sprintf("GRANT ALL PRIVILEGES ON %s.* TO %s@localhost IDENTIFIED BY '%s'", self.cmd_database, self.cmd_username, self.cmd_password))
+
+	return nil
+}
+
+func (self *MysqlPlugin) Delete(cmd Command) error {
+	db, err := gorm.Open("mysql", fmt.Sprintf("%s:%s@/%s?charset=utf8&parseTime=True", self.Username, self.Password, "mysql"))
+	if err != nil {
+		return err
+	}
+
+	db.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %s", self.cmd_database))
+
+	return nil
+}
+
+func (self *MysqlPlugin) Update(cmd Command) error {
+	db, err := gorm.Open("mysql", fmt.Sprintf("%s:%s@/%s?charset=utf8&parseTime=True", self.Username, self.Password, "mysql"))
+	if err != nil {
+		return err
+	}
+
+	db.Exec(fmt.Sprintf("SET PASSWORD FOR '%s'@localhost = PASSWORD('%s');", self.cmd_username, self.cmd_password))
 
 	return nil
 }

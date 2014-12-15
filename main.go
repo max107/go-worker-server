@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"github.com/mimicloud/easyconfig"
 	"log"
+	"strings"
 )
 
 var config = struct {
@@ -30,6 +31,7 @@ func init() {
 		&MysqlPlugin{Username: "root", Password: "123456"},
 		&PgsqlPlugin{Username: "max", Password: "216090"},
 		&MongoPlugin{Username: "root", Password: "123456"},
+		&OpenvzPlugin{},
 	}
 
 	easyconfig.Parse("./config.json", &config)
@@ -48,16 +50,33 @@ func init() {
 
 func receiveMessage(msg string) string {
 	var cmd Command
+	var err error
 
 	log.Printf("%s", msg)
 	if err := json.Unmarshal([]byte(msg), &cmd); err != nil {
-		panic(err)
+		return fmt.Sprintf("%v", err)
 	}
 
 	for _, plugin := range plugins {
 		if plugin.GetType() == cmd.Plugin {
 			if plugin.IsValid(cmd) {
-				err := plugin.Process(cmd)
+				action := strings.ToLower(cmd.Action)
+
+				if len(action) == 0 {
+					return "action not set"
+				}
+
+				if action == "create" {
+					err = plugin.Create(cmd)
+					log.Printf("%v", err)
+				} else if action == "delete" {
+					err = plugin.Delete(cmd)
+				} else if action == "update" {
+					err = plugin.Update(cmd)
+				} else {
+					return fmt.Sprintf("unknown action: %s", cmd.Action)
+				}
+
 				if err != nil {
 					return fmt.Sprintf("%v", err)
 				} else {
