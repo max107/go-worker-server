@@ -1,5 +1,11 @@
 {
     "bind": "tcp://*:5555",
     "allow": "127.0.0.1",
-    "auth_verbose": true
+    "auth_verbose": true,
+    "mysql_username": "",
+    "mysql_password": "",
+    "pgsql_username": "",
+    "pgsql_password": "",
+    "mongo_username": "",
+    "mongo_password": ""
 }

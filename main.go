@@ -20,21 +20,37 @@ var config = struct {
 	AuthVerbose bool   `json:"auth_verbose"`
 	Bind        string `json:"bind"`
 	Allow       string `json:"allow"`
+
+	MysqlUsername string `json:"mysql_username"`
+	MysqlPassword string `json:"mysql_password"`
+
+	PgsqlUsername string `json:"pgsql_username"`
+	PgsqlPassword string `json:"pgsql_password"`
+
+	MongoUsername string `json:"mongo_password"`
+	MongoPassword string `json:"mongo_password"`
 }{}
 
 var (
-	plugins []PluginInterface
+	plugins = make(map[string]PluginInterface)
 )
 
 func init() {
-	plugins = []PluginInterface{
-		&MysqlPlugin{Username: "root", Password: "123456"},
-		&PgsqlPlugin{Username: "max", Password: "216090"},
-		&MongoPlugin{Username: "root", Password: "123456"},
-		&OpenvzPlugin{},
-	}
-
 	easyconfig.Parse("./config.json", &config)
+
+	plugins["mysql"] = &MysqlPlugin{
+		Username: config.MysqlUsername,
+		Password: config.MysqlPassword,
+	}
+	plugins["pgsql"] = &PgsqlPlugin{
+		Username: config.PgsqlUsername,
+		Password: config.PgsqlPassword,
+	}
+	plugins["mongo"] = &MongoPlugin{
+		Username: config.MongoPassword,
+		Password: config.MongoPassword,
+	}
+	plugins["openvz"] = &OpenvzPlugin{}
 
 	// Get some indication of what the authenticator is deciding
 	zmq.AuthSetVerbose(config.AuthVerbose)
@@ -57,34 +73,32 @@ func receiveMessage(msg string) string {
 		return fmt.Sprintf("%v", err)
 	}
 
-	for _, plugin := range plugins {
-		if plugin.GetType() == cmd.Plugin {
-			if plugin.IsValid(cmd) {
-				action := strings.ToLower(cmd.Action)
+	if plugin, ok := plugins[cmd.Plugin]; ok {
+		if plugin.IsValid(cmd) {
+			action := strings.ToLower(cmd.Action)
 
-				if len(action) == 0 {
-					return "action not set"
-				}
-
-				if action == "create" {
-					err = plugin.Create(cmd)
-					log.Printf("%v", err)
-				} else if action == "delete" {
-					err = plugin.Delete(cmd)
-				} else if action == "update" {
-					err = plugin.Update(cmd)
-				} else {
-					return fmt.Sprintf("unknown action: %s", cmd.Action)
-				}
-
-				if err != nil {
-					return fmt.Sprintf("%v", err)
-				} else {
-					return "ok"
-				}
-			} else {
-				return "Invalid plugin configuration"
+			if len(action) == 0 {
+				return "action not set"
 			}
+
+			if action == "create" {
+				err = plugin.Create(cmd)
+				log.Printf("%v", err)
+			} else if action == "delete" {
+				err = plugin.Delete(cmd)
+			} else if action == "update" {
+				err = plugin.Update(cmd)
+			} else {
+				return fmt.Sprintf("unknown action: %s", cmd.Action)
+			}
+
+			if err != nil {
+				return fmt.Sprintf("%v", err)
+			} else {
+				return "ok"
+			}
+		} else {
+			return "Invalid plugin configuration"
 		}
 	}
 
