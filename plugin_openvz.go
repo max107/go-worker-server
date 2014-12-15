@@ -50,7 +50,7 @@ func (self *OpenvzPlugin) Create(cmd Command) error {
 	}
 
 	container := openvz.Container{Ctid: self.cmd_ctid}
-	err := container.CreateFromMap(createParams, params)
+	err := container.CreateFromMap(createParams)
 	if err != nil {
 		return err
 	}
